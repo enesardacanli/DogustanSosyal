@@ -36,9 +36,10 @@ def admin_login(request):
     
     return render(request, 'admin/login.html')
 
-@admin_required
+
+@superadmin_required
 def admin_dashboard(request):
-    """Admin dashboard"""
+    """Admin dashboard (superadmin only)"""
     db = get_db()
     
     # İstatistikler
@@ -60,7 +61,7 @@ def admin_dashboard(request):
     }
     return render(request, 'admin/dashboard.html', context)
 
-@admin_required
+@superadmin_required
 def admin_appointments(request):
     """Appointment management"""
     db = get_db()

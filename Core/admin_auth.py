@@ -52,9 +52,13 @@ def superadmin_required(view_func):
             messages.error(request, 'Bu sayfaya erişim için admin girişi gereklidir.')
             return redirect('admin_login')
         
-        if request.session.get('admin_role') != 'superadmin':
+        role = request.session.get('admin_role')
+        if role != 'superadmin':
             messages.error(request, 'Bu sayfaya erişim yetkiniz yok. Sadece superadmin erişebilir.')
-            return redirect('admin_dashboard')
+            # Kulüp yetkilisi ise etkinliklere yönlendir
+            if role == 'club_moderator':
+                return redirect('admin_events')
+            return redirect('admin_login')
         
         return view_func(request, *args, **kwargs)
     return wrapper

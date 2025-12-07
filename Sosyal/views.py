@@ -10,7 +10,7 @@ def etkinlikler(request):
     
     # Kategori filtreleme
     kategori = request.GET.get('kategori')
-    query = {}
+    query = {'durum': 'onaylandi'}  # Sadece onaylanan etkinlikler
     if kategori:
         query['kategori'] = kategori
     

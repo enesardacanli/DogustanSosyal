@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Etkinlik Yönetimi - Admin Panel</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f5f7fa; min-height: 100vh; }
+        .admin-layout { display: flex; min-height: 100vh; }
+        
+        /* Sidebar */
+        .sidebar { width: 250px; background: linear-gradient(180deg, #e74c3c 0%, #c0392b 100%); color: white; padding: 30px 0; position: fixed; height: 100vh; }
+        .sidebar-header { padding: 0 20px 30px; border-bottom: 1px solid rgba(255, 255, 255, 0.2); margin-bottom: 30px; }
+        .sidebar-title { font-size: 20px; font-weight: 600; }
+        .sidebar-subtitle { font-size: 12px; opacity: 0.8; margin-top: 5px; }
+        .sidebar-menu { list-style: none; }
+        .sidebar-menu li { margin-bottom: 5px; }
+        .sidebar-menu a { display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: white; text-decoration: none; transition: all 0.3s; }
+        .sidebar-menu a:hover, .sidebar-menu a.active { background: rgba(255, 255, 255, 0.2); }
+        
+        /* Main Content */
+        .main-content { margin-left: 250px; flex: 1; padding: 30px; }
+        .top-bar { background: white; padding: 20px 30px; border-radius: 15px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); }
+        .page-title { font-size: 24px; color: #333; }
+        
+        /* Filter Tabs */
+        .filter-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .filter-tab { padding: 10px 20px; background: white; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-decoration: none; color: #666; font-weight: 500; transition: all 0.3s; }
+        .filter-tab.active { background: #e74c3c; color: white; border-color: #e74c3c; }
+        
+        /* Events Grid */
+        .events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+        .event-card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); position: relative; }
+        .event-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px; }
+        .event-title { font-size: 18px; font-weight: 600; color: #333; }
+        .status-badge { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .status-bekliyor { background: #fff3cd; color: #856404; }
+        .status-onaylandi { background: #d4edda; color: #155724; }
+        .status-reddedildi { background: #f8d7da; color: #721c24; }
+        .event-info { margin-bottom: 15px; }
+        .event-info-item { display: flex; gap: 8px; margin-bottom: 8px; font-size: 14px; color: #666; }
+        .event-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.3s; text-decoration: none; display: inline-block; }
+        .btn-primary { background: #e74c3c; color: white; }
+        .btn-primary:hover { background: #d43f2f; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-success:hover { background: #218838; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-danger:hover { background: #c82333; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-secondary:hover { background: #5a6268; }
+        
+        .add-event-btn { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4); cursor: pointer; text-decoration: none; }
+        .add-event-btn:hover { transform: scale(1.1); }
+        
+        .empty-state { text-align: center; padding: 60px 20px; color: #999; }
+        .messages { margin-bottom: 20px; }
+        .alert { padding: 12px 20px; border-radius: 10px; margin-bottom: 10px; }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+    <div class="admin-layout">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">🎓 Admin Panel</div>
+                <div class="sidebar-subtitle">{{ admin_username }}</div>
+            </div>
+            <ul class="sidebar-menu">
+                {% if admin_role == 'superadmin' %}
+                <li><a href="{% url 'admin_dashboard' %}">📊 Dashboard</a></li>
+                <li><a href="{% url 'admin_appointments' %}">📋 Randevular</a></li>
+                {% endif %}
+                <li><a href="{% url 'admin_events' %}" class="active">🎉 Etkinlikler</a></li>
+                <li><a href="{% url 'admin_logout' %}">🚪 Çıkış</a></li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <div class="top-bar">
+                <h1 class="page-title">Etkinlik Yönetimi</h1>
+            </div>
+
+            {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="filter-tabs">
+                <a href="?status=all" class="filter-tab {% if status_filter == 'all' %}active{% endif %}">Tümü</a>
+                <a href="?status=bekliyor" class="filter-tab {% if status_filter == 'bekliyor' %}active{% endif %}">Bekleyen</a>
+                <a href="?status=onaylandi" class="filter-tab {% if status_filter == 'onaylandi' %}active{% endif %}">Onaylanan</a>
+                <a href="?status=reddedildi" class="filter-tab {% if status_filter == 'reddedildi' %}active{% endif %}">Reddedilen</a>
+            </div>
+
+            {% if events %}
+            <div class="events-grid">
+                {% for event in events %}
+                <div class="event-card">
+                    <div class="event-header">
+                        <div class="event-title">{{ event.baslik }}</div>
+                        <span class="status-badge status-{{ event.durum }}">
+                            {% if event.durum == 'bekliyor' %}Bekliyor
+                            {% elif event.durum == 'onaylandi' %}Onaylandı
+                            {% elif event.durum == 'reddedildi' %}Reddedildi
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="event-info">
+                        <div class="event-info-item"><strong>📅</strong> {{ event.tarih }} - {{ event.saat }}</div>
+                        <div class="event-info-item"><strong>📍</strong> {{ event.konum }}</div>
+                        <div class="event-info-item"><strong>🏷️</strong> {{ event.kategori }}</div>
+                        {% if admin_role == 'superadmin' %}
+                        <div class="event-info-item"><strong>👤</strong> {{ event.olusturan }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="event-actions">
+                        {% if admin_role == 'superadmin' and event.durum == 'bekliyor' %}
+                        <form method="POST" action="{% url 'approve_event' event.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success">✓ Onayla</button>
+                        </form>
+                        <form method="POST" action="{% url 'reject_event' event.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger">✗ Reddet</button>
+                        </form>
+                        {% endif %}
+                        <a href="{% url 'edit_event' event.id %}" class="btn btn-secondary">✏️ Düzenle</a>
+                        <form method="POST" action="{% url 'delete_event' event.id %}" style="display: inline;" onsubmit="return confirm('Bu etkinliği silmek istediğinize emin misiniz?')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger">🗑️ Sil</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div style="font-size: 48px; margin-bottom: 15px;">🎉</div>
+                <p>Henüz etkinlik bulunmuyor</p>
+            </div>
+            {% endif %}
+
+            <a href="{% url 'add_event' %}" class="add-event-btn">+</a>
+        </div>
+    </div>
+</body>
+</html>

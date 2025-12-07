@@ -139,8 +139,15 @@ def reject_appointment(request, appointment_id):
 @admin_required
 def admin_logout(request):
     """Admin logout"""
-    request.session.flush()
-    messages.success(request, 'Başarıyla çıkış yaptınız.')
+    # Sadece admin session değerlerini temizle, ana site login'i koru
+    if 'is_admin' in request.session:
+        del request.session['is_admin']
+    if 'admin_username' in request.session:
+        del request.session['admin_username']
+    if 'admin_role' in request.session:
+        del request.session['admin_role']
+    
+    messages.success(request, 'Admin panelinden başarıyla çıkış yaptınız.')
     return redirect('admin_login')
 
 # ==================== EVENT MANAGEMENT ====================
@@ -187,14 +194,23 @@ def add_event(request):
         username = request.session.get('admin_username')
         role = request.session.get('admin_role')
         
+        # Ücret bilgisi
+        ucret_tipi = request.POST.get('ucret')
+        ucret_tutari = None
+        if ucret_tipi == 'paid':
+            ucret_tutari = float(request.POST.get('ucret_tutari', 0))
+        
         event_data = {
             'baslik': request.POST.get('baslik'),
             'aciklama': request.POST.get('aciklama'),
             'kategori': request.POST.get('kategori'),
             'tarih': request.POST.get('tarih'),
-            'saat': request.POST.get('saat'),
+            'baslangic_saati': request.POST.get('baslangic_saati'),
+            'bitis_saati': request.POST.get('bitis_saati'),
             'konum': request.POST.get('konum'),
-            'katilimci_limiti': int(request.POST.get('katilimci_limiti', 0)) or None,
+            'kontenjan': int(request.POST.get('kontenjan', 0)),
+            'ucret_tipi': ucret_tipi,
+            'ucret_tutari': ucret_tutari,
             'durum': 'onaylandi' if role == 'superadmin' else 'bekliyor',
             'olusturan': username,
             'olusturan_role': role,

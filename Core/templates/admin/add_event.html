@@ -57,13 +57,13 @@
                     {% csrf_token %}
                     
                     <div class="form-group">
-                        <label class="form-label" for="baslik">Başlık *</label>
-                        <input type="text" id="baslik" name="baslik" class="form-control" required>
+                        <label class="form-label" for="baslik">Etkinlik Adı *</label>
+                        <input type="text" id="baslik" name="baslik" class="form-control" placeholder="Örn: Bahar Şenliği" required>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label" for="aciklama">Açıklama *</label>
-                        <textarea id="aciklama" name="aciklama" class="form-control" required></textarea>
+                        <textarea id="aciklama" name="aciklama" class="form-control" placeholder="Etkinlik hakkında detaylı bilgi..." required></textarea>
                     </div>
 
                     <div class="form-group">
@@ -80,23 +80,42 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="tarih">Tarih *</label>
+                        <label class="form-label" for="tarih">Etkinlik Tarihi *</label>
                         <input type="date" id="tarih" name="tarih" class="form-control" required>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="saat">Saat *</label>
-                        <input type="time" id="saat" name="saat" class="form-control" required>
+                        <label class="form-label" for="baslangic_saati">Başlangıç Saati *</label>
+                        <input type="time" id="baslangic_saati" name="baslangic_saati" class="form-control" required>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="konum">Konum *</label>
-                        <input type="text" id="konum" name="konum" class="form-control" placeholder="Örn: Konferans Salonu A" required>
+                        <label class="form-label" for="bitis_saati">Bitiş Saati *</label>
+                        <input type="time" id="bitis_saati" name="bitis_saati" class="form-control" required>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="katilimci_limiti">Katılımcı Limiti (Opsiyonel)</label>
-                        <input type="number" id="katilimci_limiti" name="katilimci_limiti" class="form-control" min="0" placeholder="Boş bırakılırsa sınırsız">
+                        <label class="form-label" for="konum">Yer (Adres) *</label>
+                        <input type="text" id="konum" name="konum" class="form-control" placeholder="Örn: Konferans Salonu A, Kampüs" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="kontenjan">Kontenjan (Katılımcı Limiti) *</label>
+                        <input type="number" id="kontenjan" name="kontenjan" class="form-control" min="1" placeholder="Örn: 100" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="ucret">Ücret *</label>
+                        <select id="ucret" name="ucret" class="form-control" required>
+                            <option value="">Seçiniz...</option>
+                            <option value="free">Ücretsiz</option>
+                            <option value="paid">Ücretli</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="ucret_tutari_group" style="display: none;">
+                        <label class="form-label" for="ucret_tutari">Ücret Tutarı (TL)</label>
+                        <input type="number" id="ucret_tutari" name="ucret_tutari" class="form-control" min="0" step="0.01" placeholder="Örn: 50.00">
                     </div>
 
                     <div class="form-actions">
@@ -104,6 +123,23 @@
                         <a href="{% url 'admin_events' %}" class="btn btn-secondary">İptal</a>
                     </div>
                 </form>
+                
+                <script>
+                    // Ücret seçimine göre ücret tutarı alanını göster/gizle
+                    document.getElementById('ucret').addEventListener('change', function() {
+                        const ucretTutariGroup = document.getElementById('ucret_tutari_group');
+                        const ucretTutariInput = document.getElementById('ucret_tutari');
+                        
+                        if (this.value === 'paid') {
+                            ucretTutariGroup.style.display = 'block';
+                            ucretTutariInput.required = true;
+                        } else {
+                            ucretTutariGroup.style.display = 'none';
+                            ucretTutariInput.required = false;
+                            ucretTutariInput.value = '';
+                        }
+                    });
+                </script>
             </div>
         </div>
     </div>

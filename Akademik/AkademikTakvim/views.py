@@ -1,35 +1,51 @@
-from django.shortcuts import render
-from django.http.response import HttpResponse
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from .models import AkademikEtkinlik
-from datetime import datetime, timedelta
-
+from django.contrib import messages
+from Core.mongodb_utils import get_db, serialize_mongo_docs
+from datetime import datetime
 
 @login_required(login_url='/Kullanıcılar/login/')
-def canliAkademikTakvim(request):
-    bugun = datetime.now().date()
+def akademik_takvim(request):
+    db = get_db()
     
-    # Tüm etkinlikleri getir (geçmiş ve gelecek)
-    tum_etkinlikler = AkademikEtkinlik.objects.all()
+    # Tüm akademik etkinlikleri getir
+    etkinlikler = list(db.akademik_etkinlikler.find({'egitim_ogretim_yili': '2025-2026'}))
     
-    # Yaklaşan etkinlikler (bugünden itibaren 60 gün)
-    yaklasan_etkinlikler = AkademikEtkinlik.objects.filter(
-        tarih__gte=bugun,
-        tarih__lte=bugun + timedelta(days=60)
-    ).order_by('tarih')[:10]
+    # Kategorilere göre ayır
+    sinavlar = []
+    tatiller = []
+    kayit_basvurular = []
+    donem_tarihleri = []
     
-    # Etkinlikleri tiplere göre grupla
-    sinavlar = tum_etkinlikler.filter(tip='sinav')
-    tatiller = tum_etkinlikler.filter(tip='tatil')
-    diger = tum_etkinlikler.exclude(tip__in=['sinav', 'tatil'])
+    for etk in etkinlikler:
+        etkinlik_obj = {
+            'baslik': etk.get('baslik'),
+            'tarih': etk.get('tarih'),
+            'tip': etk.get('tip'),
+            'kategori': etk.get('kategori'),
+            'donem': etk.get('donem')
+        }
+        
+        if etk.get('tip') == 'sinav':
+            sinavlar.append(etkinlik_obj)
+        elif etk.get('tip') == 'tatil':
+            tatiller.append(etkinlik_obj)
+        elif etk.get('tip') == 'kayit_basvuru':
+            kayit_basvurular.append(etkinlik_obj)
+        elif etk.get('tip') == 'donem':
+            donem_tarihleri.append(etkinlik_obj)
+    
+    # Diğer önemli tarihler (kayıt + dönem)
+    diger = kayit_basvurular + donem_tarihleri
     
     context = {
-        'etkinlikler': tum_etkinlikler,
-        'yaklasan_etkinlikler': yaklasan_etkinlikler,
         'sinavlar': sinavlar,
         'tatiller': tatiller,
         'diger': diger,
-        'bugun': bugun,
+        'yaklasan_etkinlikler': (sinavlar[:5] + tatiller[:3] + diger[:2])[:10],  # İlk 10 etkinlik
     }
-    return render(request, "canliAkademikTakvim.html", context)
+    return render(request, 'canliAkademikTakvim.html', context)
 
+@login_required(login_url='/Kullanıcılar/login/')
+def canliAkademikTakvim(request):
+    return akademik_takvim(request)

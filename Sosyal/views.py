@@ -1,18 +1,21 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http.response import HttpResponse, JsonResponse
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from .models import Etkinlik, Kulup, Duyuru
 from django.contrib import messages
-
+from Core.mongodb_utils import get_db, serialize_mongo_docs
+from datetime import datetime
 
 @login_required(login_url='/Kullanıcılar/login/')
 def etkinlikler(request):
-    etkinlik_listesi = Etkinlik.objects.all().order_by('-tarih')
+    db = get_db()
     
     # Kategori filtreleme
     kategori = request.GET.get('kategori')
+    query = {}
     if kategori:
-        etkinlik_listesi = etkinlik_listesi.filter(kategori=kategori)
+        query['kategori'] = kategori
+    
+    etkinlik_listesi = list(db.etkinlikler.find(query).sort('tarih', -1))
+    etkinlik_listesi = serialize_mongo_docs(etkinlik_listesi)
     
     context = {
         'etkinlikler': etkinlik_listesi,
@@ -21,12 +24,16 @@ def etkinlikler(request):
 
 @login_required(login_url='/Kullanıcılar/login/')
 def kulupler(request):
-    kulup_listesi = Kulup.objects.all()
+    db = get_db()
     
     # Kategori filtreleme
     kategori = request.GET.get('kategori')
+    query = {}
     if kategori:
-        kulup_listesi = kulup_listesi.filter(kategori=kategori)
+        query['kategori'] = kategori
+    
+    kulup_listesi = list(db.kulupler.find(query).sort('ad', 1))
+    kulup_listesi = serialize_mongo_docs(kulup_listesi)
     
     context = {
         'kulupler': kulup_listesi,
@@ -35,35 +42,62 @@ def kulupler(request):
 
 @login_required(login_url='/Kullanıcılar/login/')
 def duyurular(request):
-    duyuru_listesi = Duyuru.objects.all().order_by('-olusturma_tarihi')
+    db = get_db()
     
     # Kategori filtreleme
     kategori = request.GET.get('kategori')
+    query = {}
     if kategori:
-        duyuru_listesi = duyuru_listesi.filter(kategori=kategori)
+        query['kategori'] = kategori
+    
+    duyuru_listesi = list(db.duyurular.find(query).sort('olusturma_tarihi', -1))
+    duyuru_listesi = serialize_mongo_docs(duyuru_listesi)
     
     context = {
         'duyurular': duyuru_listesi,
     }
     return render(request, 'duyurular.html', context)
 
-# Etkinliğe katıl/ayrıl AJAX endpoint
 @login_required(login_url='/Kullanıcılar/login/')
 def etkinlik_katil(request, etkinlik_id):
+    from django.http import JsonResponse
+    from bson import ObjectId
+    
     if request.method == 'POST':
-        etkinlik = get_object_or_404(Etkinlik, id=etkinlik_id)
+        db = get_db()
         
-        if request.user in etkinlik.katilimcilar.all():
-            etkinlik.katilimcilar.remove(request.user)
-            katildi = False
-        else:
-            etkinlik.katilimcilar.add(request.user)
-            katildi = True
-        
-        return JsonResponse({
-            'success': True,
-            'katildi': katildi,
-            'katilimci_sayisi': etkinlik.katilimci_sayisi()
-        })
+        try:
+            etkinlik = db.etkinlikler.find_one({'_id': ObjectId(etkinlik_id)})
+            
+            if not etkinlik:
+                return JsonResponse({'success': False, 'error': 'Etkinlik bulunamadı'})
+            
+            katilimci_ids = etkinlik.get('katilimci_ids', [])
+            user_id = request.user.id
+            
+            if user_id in katilimci_ids:
+                # Kullanıcı zaten katılmış, çıkar
+                db.etkinlikler.update_one(
+                    {'_id': ObjectId(etkinlik_id)},
+                    {'$pull': {'katilimci_ids': user_id}}
+                )
+                katildi = False
+                katilimci_ids.remove(user_id)
+            else:
+                # Kullanıcıyı ekle
+                db.etkinlikler.update_one(
+                    {'_id': ObjectId(etkinlik_id)},
+                    {'$addToSet': {'katilimci_ids': user_id}}
+                )
+                katildi = True
+                katilimci_ids.append(user_id)
+            
+            return JsonResponse({
+                'success': True,
+                'katildi': katildi,
+                'katilimci_sayisi': len(katilimci_ids)
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False})

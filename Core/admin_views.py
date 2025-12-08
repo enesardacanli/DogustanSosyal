@@ -21,6 +21,14 @@ def admin_login(request):
         
         role = authenticate_admin(username, password)
         if role:
+            # Update last login time in database
+            from Kullanıcılar.models import Kullanici
+            try:
+                kullanici = Kullanici.objects.get(kullanici_adi=username)
+                kullanici.update_last_login()
+            except Kullanici.DoesNotExist:
+                pass
+            
             request.session['is_admin'] = True
             request.session['admin_username'] = username
             request.session['admin_role'] = role
@@ -35,6 +43,7 @@ def admin_login(request):
             messages.error(request, 'Kullanıcı adı veya şifre hatalı!')
     
     return render(request, 'admin/login.html')
+
 
 
 @superadmin_required

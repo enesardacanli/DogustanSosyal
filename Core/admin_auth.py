@@ -5,34 +5,30 @@ Admin Authentication with Role-Based Access Control
 from functools import wraps
 from django.shortcuts import redirect
 from django.contrib import messages
-from decouple import config
+from Kullanıcılar.models import Kullanici
 
-# Admin users with roles
-ADMIN_USERS = {
-    config('ADMIN_USERNAME_1', default='admin'): {
-        'password': config('ADMIN_PASSWORD_1', default='admin123'),
-        'role': 'superadmin'
-    },
-    config('ADMIN_USERNAME_2', default='superadmin'): {
-        'password': config('ADMIN_PASSWORD_2', default='super123'),
-        'role': 'superadmin'
-    },
-    'kulup1': {
-        'password': 'kulup123',
-        'role': 'club_moderator'
-    },
-    'kulup2': {
-        'password': 'kulup123',
-        'role': 'club_moderator'
-    },
-}
 
 def authenticate_admin(username, password):
-    """Authenticate admin user and return role"""
-    user = ADMIN_USERS.get(username)
-    if user and user['password'] == password:
-        return user['role']
-    return None
+    """Authenticate admin user from database and return role"""
+    try:
+        kullanici = Kullanici.objects.get(kullanici_adi=username)
+        
+        # Şifreyi kontrol et
+        if not kullanici.check_password(password):
+            return None
+        
+        # Hesap aktif mi kontrol et
+        if not kullanici.aktif:
+            return None
+        
+        # Sadece admin rollerine sahip kullanıcıların giriş yapmasına izin ver
+        if kullanici.rol in ['superadmin', 'club_moderator']:
+            return kullanici.rol
+        
+        return None
+    
+    except Kullanici.DoesNotExist:
+        return None
 
 def admin_required(view_func):
     """Decorator to check if user is admin (any role)"""

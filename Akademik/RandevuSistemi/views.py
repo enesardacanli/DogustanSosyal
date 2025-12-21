@@ -25,9 +25,13 @@ def randevu_listesi(request):
             ogretmen = db.ogretmenler.find_one({'_id': ObjectId(ogretmen_id)})
             
             if ogretmen:
+                # Öğrenci adını session'dan veya kullanıcı adından al
+                ogrenci_adi = request.session.get('user_isim', request.session.get('user_username', 'Bilinmeyen'))
+                
                 db.randevular.insert_one({
                     'ogrenci_id': request.session.get('user_id'),
                     'ogrenci_username': request.session.get('user_username'),
+                    'ogrenci_adi': ogrenci_adi,
                     'ogretmen_id': str(ogretmen['_id']),
                     'ogretmen_adi': ogretmen.get('ad'),
                     'ogretmen_unvan': ogretmen.get('unvan'),

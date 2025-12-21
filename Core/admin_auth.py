@@ -22,7 +22,7 @@ def authenticate_admin(username, password):
             return None
         
         # Sadece admin rollerine sahip kullanıcıların giriş yapmasına izin ver
-        if kullanici.rol in ['superadmin', 'club_moderator']:
+        if kullanici.rol in ['superadmin', 'club_moderator', 'instructor', 'ogretmen']:
             return kullanici.rol
         
         return None
@@ -71,6 +71,24 @@ def club_moderator_required(view_func):
         if role not in ['club_moderator', 'superadmin']:
             messages.error(request, 'Bu sayfaya erişim yetkiniz yok.')
             return redirect('admin_dashboard')
+        
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+def instructor_required(view_func):
+    """Decorator to check if user is instructor or superadmin"""
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.session.get('is_admin'):
+            messages.error(request, 'Bu sayfaya erişim için admin girişi gereklidir.')
+            return redirect('admin_login')
+        
+        role = request.session.get('admin_role')
+        if role not in ['instructor', 'ogretmen', 'superadmin']:
+            messages.error(request, 'Bu sayfaya erişim yetkiniz yok.')
+            if role == 'club_moderator':
+                return redirect('admin_events')
+            return redirect('admin_login')
         
         return view_func(request, *args, **kwargs)
     return wrapper

@@ -60,6 +60,10 @@ def register_api(request):
     }, status=405)
 
 def login_view(request):    
+    # Eğer kullanıcı zaten giriş yapmışsa ana sayfaya yönlendir
+    if request.session.get('is_authenticated'):
+        return redirect('index')
+        
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
@@ -85,6 +89,7 @@ def login_view(request):
                     request.session['user_id'] = kullanici.id
                     request.session['user_username'] = kullanici.kullanici_adi
                     request.session['user_role'] = kullanici.rol
+                    request.session['user_isim'] = kullanici.isim if kullanici.isim else kullanici.kullanici_adi
                     request.session['is_authenticated'] = True
                     
                     # Son giriş zamanını güncelle
@@ -103,15 +108,8 @@ def login_view(request):
     return render(request, 'kullanicilar/login.html')
 
 def logout_view(request):
-    # Session'dan kullanıcı bilgilerini temizle
-    if 'user_id' in request.session:
-        del request.session['user_id']
-    if 'user_username' in request.session:
-        del request.session['user_username']
-    if 'user_role' in request.session:
-        del request.session['user_role']
-    if 'is_authenticated' in request.session:
-        del request.session['is_authenticated']
+    # Session'ı tamamen temizle
+    request.session.flush()
     
     messages.success(request, 'Başarıyla çıkış yapıldı.')
     return redirect('kullanicilar:login')

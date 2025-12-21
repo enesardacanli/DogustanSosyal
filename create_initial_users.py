@@ -50,6 +50,14 @@ def create_initial_users():
             'password': 'test123',
             'email': 'test@dogustansosyal.com',
             'rol': 'user',
+            'isim': 'Eren Turna',
+            'bolum': 'Yazılım Mühendisliği',
+        },
+        {
+            'kullanici_adi': 'ogretmen1',
+            'password': 'ogretmen123',
+            'email': 'ogretmen1@dogustansosyal.com',
+            'rol': 'instructor',
         },
     ]
     
@@ -70,6 +78,8 @@ def create_initial_users():
             kullanici_adi=kullanici_adi,
             email=user_data['email'],
             rol=user_data['rol'],
+            isim=user_data.get('isim', ''),
+            bolum=user_data.get('bolum', ''),
             aktif=True,
         )
         kullanici.set_password(user_data['password'])
@@ -93,6 +103,72 @@ def create_initial_users():
         print(f"{kullanici.kullanici_adi:<20} {kullanici.get_rol_display():<20} {kullanici.email or 'N/A':<30} {aktif_str}")
 
 
+def create_instructor_users_from_mongodb():
+    """Create instructor users from MongoDB ogretmenler collection"""
+    from Core.mongodb_utils import get_db
+    
+    print("\n" + "="*50)
+    print("MongoDB'den ogretmen kullanicilari olusturuluyor...")
+    print("="*50 + "\n")
+    
+    db = get_db()
+    
+    # Get all instructors from MongoDB
+    ogretmenler = list(db.ogretmenler.find())
+    
+    if not ogretmenler:
+        print("[!] MongoDB'de kayitli ogretmen bulunamadi.")
+        return
+    
+    print(f"Toplam {len(ogretmenler)} ogretmen bulundu.\n")
+    
+    created_count = 0
+    skipped_count = 0
+    
+    for ogretmen in ogretmenler:
+        ad = ogretmen.get('ad', '')
+        email = ogretmen.get('email', '')
+        
+        if not ad:
+            print(f"[!] Ad bilgisi yok, atlaniyor: {ogretmen}")
+            skipped_count += 1
+            continue
+        
+        # Use email as username if available, otherwise use name
+        kullanici_adi = email if email else ad.lower().replace(' ', '_')
+        
+        # Password is the instructor's name
+        sifre = ad
+        
+        # Check if user already exists
+        if Kullanici.objects.filter(kullanici_adi=kullanici_adi).exists():
+            print(f"[!] Kullanici zaten mevcut: {kullanici_adi}")
+            skipped_count += 1
+            continue
+        
+        # Create user
+        kullanici = Kullanici.objects.create(
+            kullanici_adi=kullanici_adi,
+            email=email,
+            rol='instructor',
+            aktif=True
+        )
+        kullanici.set_password(sifre)
+        kullanici.save()
+        
+        # Update ogretmenler collection with kullanici_adi for linking
+        db.ogretmenler.update_one(
+            {'_id': ogretmen['_id']},
+            {'$set': {'kullanici_adi': kullanici_adi}}
+        )
+        
+        print(f"[+] Ogretmen kullanici olusturuldu: {kullanici_adi} (Sifre: {sifre})")
+        created_count += 1
+    
+    print(f"\nOgretmen sonuc: {created_count} olusturuldu, {skipped_count} atlandi")
+
 
 if __name__ == '__main__':
     create_initial_users()
+    create_instructor_users_from_mongodb()
+

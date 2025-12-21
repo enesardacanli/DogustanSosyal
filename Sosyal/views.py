@@ -49,7 +49,7 @@ def kulupler(request):
     
     # Kategori filtreleme
     kategori = request.GET.get('kategori')
-    query = {}
+    query = {'durum': 'onaylandi'} # Sadece onaylı kulüpleri göster
     if kategori:
         query['kategori'] = kategori
     
